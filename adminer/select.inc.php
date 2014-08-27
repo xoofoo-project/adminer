@@ -52,7 +52,11 @@ if ($_GET["val"] && is_ajax()) {
 if ($_POST && !$error) {
 	$where_check = $where;
 	if (!$_POST["all"] && is_array($_POST["check"])) {
-		$where_check[] = "((" . implode(") OR (", array_map('where_check', $_POST["check"])) . "))";
+		$checks = array();
+		foreach ($_POST["check"] as $check) {
+			$checks[] = where_check($check, $fields);
+		}
+		$where_check[] = "((" . implode(") OR (", $checks) . "))";
 	}
 	$where_check = ($where_check ? "\nWHERE " . implode(" AND ", $where_check) : "");
 	$primary = $unselected = null;
@@ -139,7 +143,11 @@ if ($_POST && !$error) {
 				}
 			}
 			queries_redirect(remove_from_uri($_POST["all"] && $_POST["delete"] ? "page" : ""), $message, $result);
-			//! display edit page in case of an error
+			if (!$_POST["delete"]) {
+				edit_form($TABLE, $fields, (array) $_POST["fields"], !$_POST["clone"]);
+				page_footer();
+				exit;
+			}
 
 		} elseif (!$_POST["import"]) { // modify
 			if (!$_POST["val"]) {
@@ -352,7 +360,8 @@ if (!$columns && support("table")) {
 				$unique_idf = "";
 				foreach ($unique_array as $key => $val) {
 					if (($jush == "sql" || $jush == "pgsql") && strlen($val) > 64) {
-						$key = "MD5(" . (strpos($key, '(') ? $key : idf_escape($key)) . ")"; //! columns looking like functions
+						$key = (strpos($key, '(') ? $key : idf_escape($key)); //! columns looking like functions
+						$key = "MD5(" . ($jush == 'sql' && preg_match("~^utf8_~", $fields[$key]["collation"]) ? $key : "CONVERT($key USING " . charset($connection) . ")") . ")";
 						$val = md5($val);
 					}
 					$unique_idf .= "&" . ($val !== null ? urlencode("where[" . bracket_escape($key) . "]") . "=" . urlencode($val) : "null%5B%5D=" . urlencode($key));
@@ -462,7 +471,7 @@ if (!$columns && support("table")) {
 						);
 					}
 					echo (($found_rows === false ? count($rows) + 1 : $found_rows - $page * $limit) > $limit
-						? ' <a href="' . h(remove_from_uri("page") . "&page=" . ($page + 1)) . '" onclick="return !selectLoadMore(this, ' . (+$limit) . ', \'' . lang('Loading') . '...\');">' . lang('Load more data') . '</a>'
+						? ' <a href="' . h(remove_from_uri("page") . "&page=" . ($page + 1)) . '" onclick="return !selectLoadMore(this, ' . (+$limit) . ', \'' . lang('Loading') . '...\');" class="loadmore">' . lang('Load more data') . '</a>'
 						: ''
 					);
 				} else {

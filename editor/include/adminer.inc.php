@@ -17,6 +17,10 @@ class Adminer {
 		return password_file($create);
 	}
 
+	function bruteForceKey() {
+		return $_SERVER["REMOTE_ADDR"];
+	}
+
 	function database() {
 		global $connection;
 		if ($connection) {
@@ -128,8 +132,8 @@ ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
 		}
 	}
 
-	function selectQuery($query) {
-		return "<!--\n" . str_replace("--", "--><!-- ", $query) . "\n-->\n";
+	function selectQuery($query, $time) {
+		return "<!--\n" . str_replace("--", "--><!-- ", $query) . "\n($time)\n-->\n";
 	}
 
 	function rowDescription($table) {
@@ -183,7 +187,7 @@ ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
 			$return = ($val ? lang('yes') : lang('no'));
 		}
 		if ($link) {
-			$return = "<a href='$link'>$return</a>";
+			$return = "<a href='$link'" . (is_url($link) ? " rel='noreferrer'" : "") . ">$return</a>";
 		}
 		if (!$link && !like_bool($field) && preg_match('~int|float|double|decimal~', $field["type"])) {
 			$return = "<div class='number'>$return</div>"; // Firefox doesn't support <colgroup>
@@ -425,8 +429,8 @@ ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
 		return "";
 	}
 
-	function messageQuery($query) {
-		return " <span class='time'>" . @date("H:i:s") . "</span><!--\n" . str_replace("--", "--><!-- ", $query) . "\n-->";
+	function messageQuery($query, $time) {
+		return " <span class='time'>" . @date("H:i:s") . "</span><!--\n" . str_replace("--", "--><!-- ", $query) . "\n" . ($time ? "($time)\n" : "") . "-->";
 	}
 
 	function editFunctions($field) {
@@ -581,7 +585,10 @@ ORDER BY ORDINAL_POSITION", null, "") as $row) { //! requires MySQL 5
 		foreach ($tables as $row) {
 			$name = $this->tableName($row);
 			if (isset($row["Engine"]) && $name != "") { // ignore views and tables without name
-				echo "<a href='" . h(ME) . 'select=' . urlencode($row["Name"]) . "'" . bold($_GET["select"] == $row["Name"] || $_GET["edit"] == $row["Name"]) . " title='" . lang('Select data') . "'>$name</a><br>\n";
+				echo "<a href='" . h(ME) . 'select=' . urlencode($row["Name"]) . "'"
+					. bold($_GET["select"] == $row["Name"] || $_GET["edit"] == $row["Name"], "select")
+					. " title='" . lang('Select data') . "'>$name</a><br>\n"
+				;
 			}
 		}
 	}
